@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Memory - Card Matching Game",
-  description: "A beautiful and simple memory card matching game. Match all the pairs and test your memory!",
+  title: "Yu-Gi-Oh! Memory Match",
+  description: "Epic Yu-Gi-Oh! memory card matching game. Test your skills!",
 };
 
 export default function RootLayout({
