@@ -4,36 +4,36 @@ import { useState, useEffect } from 'react'
 
 export const dynamic = 'force-dynamic'
 
-const CARD_PAIRS = [
-  { id: 1, emoji: '🐉', name: 'Dragon' },
-  { id: 2, emoji: '🪄', name: 'Magic' },
-  { id: 3, emoji: '🎭', name: 'Drama' },
-  { id: 4, emoji: '⚡', name: 'Lightning' },
-  { id: 5, emoji: '❄️', name: 'Frost' },
-  { id: 6, emoji: '🔥', name: 'Fire' },
-  { id: 7, emoji: '💎', name: 'Crystal' },
-  { id: 8, emoji: '🌙', name: 'Moon' },
+// Yu-Gi-Oh cards with reliable image URLs
+const YUGIOH_CARDS = [
+  { id: 1, name: 'Blue Eyes', img: 'https://images.ygoprodeck.com/images/cards/89631139.jpg' },
+  { id: 2, name: 'Dark Magician', img: 'https://images.ygoprodeck.com/images/cards/46986414.jpg' },
+  { id: 3, name: 'Exodia', img: 'https://images.ygoprodeck.com/images/cards/33396948.jpg' },
+  { id: 4, name: 'Red Eyes', img: 'https://images.ygoprodeck.com/images/cards/74677422.jpg' },
+  { id: 5, name: 'Kuriboh', img: 'https://images.ygoprodeck.com/images/cards/40640057.jpg' },
+  { id: 6, name: 'Pot of Greed', img: 'https://images.ygoprodeck.com/images/cards/55144522.jpg' },
+  { id: 7, name: 'Mirror Force', img: 'https://images.ygoprodeck.com/images/cards/44095762.jpg' },
+  { id: 8, name: 'Celtic Guardian', img: 'https://images.ygoprodeck.com/images/cards/91152256.jpg' },
 ]
 
 interface Card {
   id: number
   pairId: number
-  emoji: string
   name: string
+  img: string
   flipped: boolean
   matched: boolean
+  imgLoaded: boolean
 }
 
 function shuffleCards(): Card[] {
-  const doubled = CARD_PAIRS.flatMap((card, idx) => [
-    { ...card, id: idx * 2, pairId: idx },
-    { ...card, id: idx * 2 + 1, pairId: idx },
+  const doubled = YUGIOH_CARDS.flatMap((card, idx) => [
+    { ...card, id: idx * 2, pairId: idx, flipped: false, matched: false, imgLoaded: false },
+    { ...card, id: idx * 2 + 1, pairId: idx, flipped: false, matched: false, imgLoaded: false },
   ])
   return doubled.sort(() => Math.random() - 0.5).map((card, idx) => ({
     ...card,
     id: idx,
-    flipped: false,
-    matched: false,
   }))
 }
 
@@ -66,14 +66,14 @@ export default function Home() {
           i === first || i === second ? { ...c, matched: true } : c
         ))
         setFlipped([])
-      }, 300)
+      }, 400)
     } else {
       setTimeout(() => {
         setCards(p => p.map((c, i) =>
           i === first || i === second ? { ...c, flipped: false } : c
         ))
         setFlipped([])
-      }, 800)
+      }, 900)
     }
   }, [flipped, cards])
 
@@ -93,6 +93,10 @@ export default function Home() {
     if (flipped.length === 1) setMoves(m => m + 1)
   }
 
+  function onImageLoad(idx: number) {
+    setCards(p => p.map((c, i) => i === idx ? { ...c, imgLoaded: true } : c))
+  }
+
   function restart() {
     setCards(shuffleCards())
     setFlipped([])
@@ -106,16 +110,16 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 flex items-center justify-center p-4">
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-slate-100 flex items-center justify-center p-4">
       <div className="w-full max-w-2xl">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-2">Memory</h1>
-          <p className="text-slate-500">Match the pairs</p>
+          <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-2">Yu-Gi-Oh! Memory</h1>
+          <p className="text-slate-500">Find all the card pairs</p>
         </div>
 
         {/* Stats */}
-        <div className="flex justify-center gap-8 mb-8">
+        <div className="flex justify-center gap-8 mb-8 flex-wrap">
           <div className="text-center">
             <div className="text-sm text-slate-500 mb-1">Moves</div>
             <div className="text-3xl font-bold text-slate-900">{moves}</div>
@@ -133,34 +137,64 @@ export default function Home() {
         </div>
 
         {/* Grid */}
-        <div className="grid grid-cols-4 gap-3 mb-8">
+        <div className="grid grid-cols-4 gap-2 md:gap-3 mb-8">
           {cards.map((card, idx) => (
             <button
               key={idx}
               onClick={() => toggleCard(idx)}
               className={`
-                aspect-square rounded-lg font-bold text-4xl
-                transition-all duration-200 transform
+                aspect-[2.5/3.5] rounded-lg
+                transition-all duration-300 transform
+                overflow-hidden relative
                 ${card.matched 
-                  ? 'opacity-0 scale-0' 
+                  ? 'opacity-0 scale-0 pointer-events-none' 
                   : 'opacity-100 scale-100'
                 }
                 ${card.flipped || card.matched
-                  ? 'bg-white shadow-md'
-                  : 'bg-gradient-to-br from-slate-200 to-slate-300 hover:shadow-lg hover:scale-105 cursor-pointer'
+                  ? 'shadow-lg'
+                  : 'bg-gradient-to-br from-slate-200 to-slate-300 hover:shadow-lg hover:scale-105 cursor-pointer shadow-md'
                 }
               `}
               disabled={card.matched}
             >
-              {(card.flipped || card.matched) && card.emoji}
+              {/* Card Back */}
+              {!card.flipped && !card.matched && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-200 to-slate-300 text-3xl">
+                  🎴
+                </div>
+              )}
+
+              {/* Card Front */}
+              {(card.flipped || card.matched) && (
+                <div className="absolute inset-0 bg-white flex items-center justify-center text-xs text-slate-600 text-center p-1">
+                  {!card.imgLoaded ? (
+                    <div className="animate-pulse">Loading...</div>
+                  ) : (
+                    <img
+                      src={card.img}
+                      alt={card.name}
+                      className="w-full h-full object-cover"
+                      onLoad={() => onImageLoad(idx)}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* Preload Image */}
+              <img
+                src={card.img}
+                alt={card.name}
+                className="hidden"
+                onLoad={() => onImageLoad(idx)}
+              />
             </button>
           ))}
         </div>
 
         {/* Victory */}
         {gameWon && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fadeIn">
+            <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl animate-scaleIn">
               <div className="text-6xl mb-4">🎉</div>
               <h2 className="text-3xl font-bold text-slate-900 mb-2">You Won!</h2>
               <p className="text-slate-500 mb-6">
