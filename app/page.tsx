@@ -1,225 +1,225 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 
-const EMOJIS = ['🚀', '🎮', '🎨', '🎭', '🎪', '🎯', '🎲', '🎸']
-const CARDS = [...EMOJIS, ...EMOJIS].sort(() => Math.random() - 0.5)
+// Yu-Gi-Oh! iconic cards with image URLs
+const YUGIOH_CARDS = [
+  { id: 'blue-eyes', name: 'Blue-Eyes White Dragon', img: 'https://images.ygoprodeck.com/images/cards/89631139.jpg' },
+  { id: 'dark-magician', name: 'Dark Magician', img: 'https://images.ygoprodeck.com/images/cards/46986414.jpg' },
+  { id: 'exodia', name: 'Exodia the Forbidden One', img: 'https://images.ygoprodeck.com/images/cards/33396948.jpg' },
+  { id: 'red-eyes', name: 'Red-Eyes Black Dragon', img: 'https://images.ygoprodeck.com/images/cards/74677422.jpg' },
+  { id: 'kuriboh', name: 'Kuriboh', img: 'https://images.ygoprodeck.com/images/cards/40640057.jpg' },
+  { id: 'pot-of-greed', name: 'Pot of Greed', img: 'https://images.ygoprodeck.com/images/cards/55144522.jpg' },
+  { id: 'mirror-force', name: 'Mirror Force', img: 'https://images.ygoprodeck.com/images/cards/44095762.jpg' },
+  { id: 'celtic-guardian', name: 'Celtic Guardian', img: 'https://images.ygoprodeck.com/images/cards/91152256.jpg' },
+]
 
 interface Card {
   id: number
-  emoji: string
+  cardId: string
+  name: string
+  img: string
   flipped: boolean
   matched: boolean
 }
 
-export default function MemoryFlip() {
-  const [cards, setCards] = useState<Card[]>([])
-  const [flippedCards, setFlippedCards] = useState<number[]>([])
-  const [moves, setMoves] = useState(0)
-  const [score, setScore] = useState(0)
-  const [timer, setTimer] = useState(0)
-  const [gameStarted, setGameStarted] = useState(false)
-  const [gameWon, setGameWon] = useState(false)
-  const [bestScore, setBestScore] = useState<number | null>(null)
-
-  // Initialize game
-  useEffect(() => {
-    const initialCards = CARDS.map((emoji, index) => ({
+function shuffleCards(): Card[] {
+  const doubled = [...YUGIOH_CARDS, ...YUGIOH_CARDS]
+  return doubled
+    .map((card, index) => ({
       id: index,
-      emoji,
+      cardId: card.id,
+      name: card.name,
+      img: card.img,
       flipped: false,
       matched: false,
     }))
-    setCards(initialCards)
-    
-    // Load best score
-    const saved = localStorage.getItem('memoryflip-best')
-    if (saved) setBestScore(parseInt(saved))
+    .sort(() => Math.random() - 0.5)
+}
+
+export default function Home() {
+  const [cards, setCards] = useState<Card[]>([])
+  const [flippedCards, setFlippedCards] = useState<number[]>([])
+  const [moves, setMoves] = useState(0)
+  const [time, setTime] = useState(0)
+  const [gameStarted, setGameStarted] = useState(false)
+  const [gameWon, setGameWon] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    setCards(shuffleCards())
   }, [])
 
-  // Timer
   useEffect(() => {
     if (!gameStarted || gameWon) return
-    const interval = setInterval(() => setTimer(t => t + 1), 1000)
-    return () => clearInterval(interval)
+    const timer = setInterval(() => setTime(t => t + 1), 1000)
+    return () => clearInterval(timer)
   }, [gameStarted, gameWon])
 
-  // Check win condition
   useEffect(() => {
-    if (cards.length > 0 && cards.every(c => c.matched)) {
-      setGameWon(true)
-      const finalScore = Math.max(0, 10000 - moves * 100 - timer * 10)
-      setScore(finalScore)
-      
-      if (!bestScore || finalScore > bestScore) {
-        setBestScore(finalScore)
-        localStorage.setItem('memoryflip-best', finalScore.toString())
-      }
-    }
-  }, [cards, moves, timer, bestScore])
-
-  const handleCardClick = (id: number) => {
-    if (!gameStarted) setGameStarted(true)
-    
-    const card = cards[id]
-    if (card.flipped || card.matched || flippedCards.length === 2) return
-
-    const newCards = [...cards]
-    newCards[id].flipped = true
-    setCards(newCards)
-
-    const newFlipped = [...flippedCards, id]
-    setFlippedCards(newFlipped)
-
-    if (newFlipped.length === 2) {
-      setMoves(m => m + 1)
-      const [first, second] = newFlipped
-      
-      if (cards[first].emoji === cards[second].emoji) {
+    if (flippedCards.length === 2) {
+      const [first, second] = flippedCards
+      if (cards[first].cardId === cards[second].cardId) {
         // Match!
         setTimeout(() => {
-          const matched = [...cards]
-          matched[first].matched = true
-          matched[second].matched = true
-          setCards(matched)
+          setCards(prev => prev.map((card, idx) =>
+            idx === first || idx === second ? { ...card, matched: true } : card
+          ))
           setFlippedCards([])
         }, 600)
       } else {
         // No match
         setTimeout(() => {
-          const unflipped = [...cards]
-          unflipped[first].flipped = false
-          unflipped[second].flipped = false
-          setCards(unflipped)
+          setCards(prev => prev.map((card, idx) =>
+            idx === first || idx === second ? { ...card, flipped: false } : card
+          ))
           setFlippedCards([])
         }, 1000)
       }
     }
+  }, [flippedCards, cards])
+
+  useEffect(() => {
+    if (mounted && cards.length > 0 && cards.every(card => card.matched)) {
+      setGameWon(true)
+    }
+  }, [cards, mounted])
+
+  function handleCardClick(index: number) {
+    if (!gameStarted) setGameStarted(true)
+    if (flippedCards.length === 2) return
+    if (cards[index].flipped || cards[index].matched) return
+    if (flippedCards.includes(index)) return
+
+    setCards(prev => prev.map((card, idx) =>
+      idx === index ? { ...card, flipped: true } : card
+    ))
+    setFlippedCards(prev => [...prev, index])
+    if (flippedCards.length === 1) setMoves(m => m + 1)
   }
 
-  const resetGame = () => {
-    const shuffled = [...EMOJIS, ...EMOJIS].sort(() => Math.random() - 0.5)
-    const newCards = shuffled.map((emoji, index) => ({
-      id: index,
-      emoji,
-      flipped: false,
-      matched: false,
-    }))
-    setCards(newCards)
+  function restart() {
+    setCards(shuffleCards())
     setFlippedCards([])
     setMoves(0)
-    setTimer(0)
+    setTime(0)
     setGameStarted(false)
     setGameWon(false)
-    setScore(0)
   }
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
+  if (!mounted) {
+    return (
+      <main className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-black flex items-center justify-center">
+        <div className="text-white text-2xl animate-pulse">Loading Duel...</div>
+      </main>
+    )
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 p-8 flex items-center justify-center">
-      <div className="max-w-2xl w-full">
+    <main className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-black p-4 md:p-8 relative overflow-hidden">
+      {/* Animated background effects */}
+      <div className="absolute inset-0 opacity-20">
+        <div className="absolute top-20 left-20 w-96 h-96 bg-purple-500 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 right-20 w-96 h-96 bg-blue-500 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+      </div>
+
+      <div className="max-w-6xl mx-auto relative z-10">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-6xl font-black text-white mb-2 drop-shadow-lg">
-            🧠 MemoryFlip
+          <h1 className="text-5xl md:text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-400 mb-2 drop-shadow-lg animate-shine">
+            YU-GI-OH! MEMORY DUEL
           </h1>
-          <p className="text-white/90 text-lg">Match all pairs as fast as you can!</p>
+          <p className="text-purple-200 text-lg md:text-xl font-semibold tracking-wide">
+            It&apos;s Time to D-D-D-DUEL!
+          </p>
         </div>
 
         {/* Stats Bar */}
-        <div className="bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-6 mb-6">
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <div className="text-3xl font-bold text-purple-600">{moves}</div>
-              <div className="text-sm text-gray-600 font-medium">Moves</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-indigo-600">{formatTime(timer)}</div>
-              <div className="text-sm text-gray-600 font-medium">Time</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-pink-600">
-                {bestScore !== null ? bestScore : '-'}
-              </div>
-              <div className="text-sm text-gray-600 font-medium">Best Score</div>
-            </div>
+        <div className="flex justify-center gap-6 mb-8 flex-wrap">
+          <div className="bg-gradient-to-br from-purple-600/80 to-purple-800/80 backdrop-blur-sm px-8 py-4 rounded-2xl border-2 border-purple-400/50 shadow-2xl">
+            <div className="text-purple-200 text-sm font-semibold mb-1">MOVES</div>
+            <div className="text-white text-3xl font-bold">{moves}</div>
           </div>
+          <div className="bg-gradient-to-br from-blue-600/80 to-blue-800/80 backdrop-blur-sm px-8 py-4 rounded-2xl border-2 border-blue-400/50 shadow-2xl">
+            <div className="text-blue-200 text-sm font-semibold mb-1">TIME</div>
+            <div className="text-white text-3xl font-bold">{time}s</div>
+          </div>
+          <button
+            onClick={restart}
+            className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-purple-900 px-8 py-4 rounded-2xl font-bold text-lg shadow-2xl transform hover:scale-105 transition-all duration-200 border-2 border-yellow-300"
+          >
+            🔄 NEW DUEL
+          </button>
         </div>
 
         {/* Game Grid */}
-        <div className="grid grid-cols-4 gap-4 mb-6">
-          {cards.map((card) => (
-            <button
+        <div className="grid grid-cols-4 gap-3 md:gap-4 max-w-4xl mx-auto mb-8">
+          {cards.map((card, index) => (
+            <div
               key={card.id}
-              onClick={() => handleCardClick(card.id)}
-              disabled={card.matched}
-              className={`aspect-square rounded-2xl text-5xl font-bold transition-all duration-500 transform hover:scale-105 active:scale-95 ${
-                card.flipped || card.matched
-                  ? 'bg-white shadow-2xl rotate-0'
-                  : 'bg-gradient-to-br from-purple-400 to-pink-400 shadow-lg rotate-y-180'
-              } ${
-                card.matched 
-                  ? 'opacity-60 cursor-not-allowed ring-4 ring-green-400' 
-                  : 'hover:shadow-2xl cursor-pointer'
-              }`}
-              style={{
-                transformStyle: 'preserve-3d',
-                perspective: '1000px',
-              }}
+              onClick={() => handleCardClick(index)}
+              className={`
+                aspect-[2.5/3.5] cursor-pointer preserve-3d transition-all duration-500
+                ${card.flipped || card.matched ? 'rotate-y-180' : ''}
+                ${card.matched ? 'opacity-0 scale-0' : 'hover:scale-105'}
+              `}
             >
-              <span className={card.flipped || card.matched ? 'block' : 'hidden'}>
-                {card.emoji}
-              </span>
-              <span className={card.flipped || card.matched ? 'hidden' : 'block text-white/30'}>
-                ?
-              </span>
-            </button>
+              {/* Card Back */}
+              <div className="absolute inset-0 backface-hidden rounded-lg overflow-hidden shadow-2xl border-2 border-purple-400/50">
+                <div className="w-full h-full bg-gradient-to-br from-purple-600 via-indigo-700 to-purple-900 flex items-center justify-center relative">
+                  <div className="text-6xl md:text-7xl opacity-80">🎴</div>
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1),transparent_50%)]"></div>
+                </div>
+              </div>
+
+              {/* Card Front */}
+              <div className="absolute inset-0 backface-hidden rotate-y-180 rounded-lg overflow-hidden shadow-2xl border-2 border-yellow-400/80">
+                <div className="relative w-full h-full bg-black">
+                  <Image
+                    src={card.img}
+                    alt={card.name}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-2">
+                    <p className="text-white text-xs md:text-sm font-bold text-center drop-shadow-lg">
+                      {card.name}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           ))}
         </div>
 
-        {/* Reset Button */}
-        <button
-          onClick={resetGame}
-          className="w-full bg-white hover:bg-gray-50 text-purple-600 font-bold py-4 px-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all transform hover:scale-105 active:scale-95"
-        >
-          🔄 New Game
-        </button>
-
-        {/* Win Modal */}
+        {/* Victory Modal */}
         {gameWon && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-300">
-            <div className="bg-white rounded-3xl p-8 max-w-md mx-4 shadow-2xl transform animate-in zoom-in duration-300">
-              <div className="text-center">
-                <div className="text-7xl mb-4 animate-bounce">🎉</div>
-                <h2 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 mb-4">
-                  You Won!
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
+            <div className="bg-gradient-to-br from-yellow-400 via-yellow-300 to-yellow-500 p-1 rounded-3xl shadow-2xl max-w-md mx-4 animate-scaleIn">
+              <div className="bg-gradient-to-br from-purple-900 to-indigo-900 rounded-3xl p-8 text-center">
+                <div className="text-6xl mb-4">🏆</div>
+                <h2 className="text-4xl font-bold text-yellow-400 mb-4 drop-shadow-lg">
+                  VICTORY!
                 </h2>
+                <p className="text-purple-200 text-xl mb-6">
+                  You&apos;ve won the duel!
+                </p>
                 <div className="space-y-2 mb-6">
-                  <p className="text-gray-600">
-                    <span className="font-bold">Moves:</span> {moves}
-                  </p>
-                  <p className="text-gray-600">
-                    <span className="font-bold">Time:</span> {formatTime(timer)}
-                  </p>
-                  <p className="text-2xl font-bold text-purple-600 mt-4">
-                    Score: {score}
-                  </p>
-                  {score === bestScore && (
-                    <p className="text-green-600 font-bold text-lg">
-                      🏆 New Best Score!
-                    </p>
-                  )}
+                  <div className="text-white text-2xl font-bold">
+                    {moves} Moves
+                  </div>
+                  <div className="text-white text-2xl font-bold">
+                    {time} Seconds
+                  </div>
                 </div>
                 <button
-                  onClick={resetGame}
-                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-4 px-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all transform hover:scale-105 active:scale-95"
+                  onClick={restart}
+                  className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-purple-900 px-8 py-4 rounded-xl font-bold text-lg shadow-xl transform hover:scale-105 transition-all duration-200"
                 >
-                  Play Again
+                  🎴 DUEL AGAIN
                 </button>
               </div>
             </div>
