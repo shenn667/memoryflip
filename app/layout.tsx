@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Yu-Gi-Oh! Memory Duel - Card Matching Game",
-  description: "It's time to D-D-D-DUEL! Match iconic Yu-Gi-Oh! cards in this epic memory game featuring Blue-Eyes White Dragon, Dark Magician, Exodia and more!",
+  title: "Memory - Card Matching Game",
+  description: "A beautiful and simple memory card matching game. Match all the pairs and test your memory!",
 };
 
 export default function RootLayout({
