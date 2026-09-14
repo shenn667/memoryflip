@@ -1,69 +1,231 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
+import { useState, useEffect } from 'react'
+
+const EMOJIS = ['🚀', '🎮', '🎨', '🎭', '🎪', '🎯', '🎲', '🎸']
+const CARDS = [...EMOJIS, ...EMOJIS].sort(() => Math.random() - 0.5)
+
+interface Card {
+  id: number
+  emoji: string
+  flipped: boolean
+  matched: boolean
+}
+
+export default function MemoryFlip() {
+  const [cards, setCards] = useState<Card[]>([])
+  const [flippedCards, setFlippedCards] = useState<number[]>([])
+  const [moves, setMoves] = useState(0)
+  const [score, setScore] = useState(0)
+  const [timer, setTimer] = useState(0)
+  const [gameStarted, setGameStarted] = useState(false)
+  const [gameWon, setGameWon] = useState(false)
+  const [bestScore, setBestScore] = useState<number | null>(null)
+
+  // Initialize game
+  useEffect(() => {
+    const initialCards = CARDS.map((emoji, index) => ({
+      id: index,
+      emoji,
+      flipped: false,
+      matched: false,
+    }))
+    setCards(initialCards)
+    
+    // Load best score
+    const saved = localStorage.getItem('memoryflip-best')
+    if (saved) setBestScore(parseInt(saved))
+  }, [])
+
+  // Timer
+  useEffect(() => {
+    if (!gameStarted || gameWon) return
+    const interval = setInterval(() => setTimer(t => t + 1), 1000)
+    return () => clearInterval(interval)
+  }, [gameStarted, gameWon])
+
+  // Check win condition
+  useEffect(() => {
+    if (cards.length > 0 && cards.every(c => c.matched)) {
+      setGameWon(true)
+      const finalScore = Math.max(0, 10000 - moves * 100 - timer * 10)
+      setScore(finalScore)
+      
+      if (!bestScore || finalScore > bestScore) {
+        setBestScore(finalScore)
+        localStorage.setItem('memoryflip-best', finalScore.toString())
+      }
+    }
+  }, [cards, moves, timer, bestScore])
+
+  const handleCardClick = (id: number) => {
+    if (!gameStarted) setGameStarted(true)
+    
+    const card = cards[id]
+    if (card.flipped || card.matched || flippedCards.length === 2) return
+
+    const newCards = [...cards]
+    newCards[id].flipped = true
+    setCards(newCards)
+
+    const newFlipped = [...flippedCards, id]
+    setFlippedCards(newFlipped)
+
+    if (newFlipped.length === 2) {
+      setMoves(m => m + 1)
+      const [first, second] = newFlipped
+      
+      if (cards[first].emoji === cards[second].emoji) {
+        // Match!
+        setTimeout(() => {
+          const matched = [...cards]
+          matched[first].matched = true
+          matched[second].matched = true
+          setCards(matched)
+          setFlippedCards([])
+        }, 600)
+      } else {
+        // No match
+        setTimeout(() => {
+          const unflipped = [...cards]
+          unflipped[first].flipped = false
+          unflipped[second].flipped = false
+          setCards(unflipped)
+          setFlippedCards([])
+        }, 1000)
+      }
+    }
+  }
+
+  const resetGame = () => {
+    const shuffled = [...EMOJIS, ...EMOJIS].sort(() => Math.random() - 0.5)
+    const newCards = shuffled.map((emoji, index) => ({
+      id: index,
+      emoji,
+      flipped: false,
+      matched: false,
+    }))
+    setCards(newCards)
+    setFlippedCards([])
+    setMoves(0)
+    setTimer(0)
+    setGameStarted(false)
+    setGameWon(false)
+    setScore(0)
+  }
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
+    <main className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 p-8 flex items-center justify-center">
+      <div className="max-w-2xl w-full">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-6xl font-black text-white mb-2 drop-shadow-lg">
+            🧠 MemoryFlip
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+          <p className="text-white/90 text-lg">Match all pairs as fast as you can!</p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        {/* Stats Bar */}
+        <div className="bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-6 mb-6">
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <div className="text-3xl font-bold text-purple-600">{moves}</div>
+              <div className="text-sm text-gray-600 font-medium">Moves</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-indigo-600">{formatTime(timer)}</div>
+              <div className="text-sm text-gray-600 font-medium">Time</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-pink-600">
+                {bestScore !== null ? bestScore : '-'}
+              </div>
+              <div className="text-sm text-gray-600 font-medium">Best Score</div>
+            </div>
+          </div>
         </div>
-      </main>
-    </div>
-  );
+
+        {/* Game Grid */}
+        <div className="grid grid-cols-4 gap-4 mb-6">
+          {cards.map((card) => (
+            <button
+              key={card.id}
+              onClick={() => handleCardClick(card.id)}
+              disabled={card.matched}
+              className={`aspect-square rounded-2xl text-5xl font-bold transition-all duration-500 transform hover:scale-105 active:scale-95 ${
+                card.flipped || card.matched
+                  ? 'bg-white shadow-2xl rotate-0'
+                  : 'bg-gradient-to-br from-purple-400 to-pink-400 shadow-lg rotate-y-180'
+              } ${
+                card.matched 
+                  ? 'opacity-60 cursor-not-allowed ring-4 ring-green-400' 
+                  : 'hover:shadow-2xl cursor-pointer'
+              }`}
+              style={{
+                transformStyle: 'preserve-3d',
+                perspective: '1000px',
+              }}
+            >
+              <span className={card.flipped || card.matched ? 'block' : 'hidden'}>
+                {card.emoji}
+              </span>
+              <span className={card.flipped || card.matched ? 'hidden' : 'block text-white/30'}>
+                ?
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Reset Button */}
+        <button
+          onClick={resetGame}
+          className="w-full bg-white hover:bg-gray-50 text-purple-600 font-bold py-4 px-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all transform hover:scale-105 active:scale-95"
+        >
+          🔄 New Game
+        </button>
+
+        {/* Win Modal */}
+        {gameWon && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-300">
+            <div className="bg-white rounded-3xl p-8 max-w-md mx-4 shadow-2xl transform animate-in zoom-in duration-300">
+              <div className="text-center">
+                <div className="text-7xl mb-4 animate-bounce">🎉</div>
+                <h2 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 mb-4">
+                  You Won!
+                </h2>
+                <div className="space-y-2 mb-6">
+                  <p className="text-gray-600">
+                    <span className="font-bold">Moves:</span> {moves}
+                  </p>
+                  <p className="text-gray-600">
+                    <span className="font-bold">Time:</span> {formatTime(timer)}
+                  </p>
+                  <p className="text-2xl font-bold text-purple-600 mt-4">
+                    Score: {score}
+                  </p>
+                  {score === bestScore && (
+                    <p className="text-green-600 font-bold text-lg">
+                      🏆 New Best Score!
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={resetGame}
+                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-4 px-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all transform hover:scale-105 active:scale-95"
+                >
+                  Play Again
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </main>
+  )
 }
