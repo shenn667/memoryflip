@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Image from 'next/image'
 
 const YUGIOH_CARDS = [
   { id: 'blue-eyes', name: 'Blue-Eyes White Dragon', img: 'https://images.ygoprodeck.com/images/cards/89631139.jpg' },
@@ -169,12 +168,10 @@ export default function Home() {
               {/* Front */}
               <div className="absolute inset-0 backface-hidden rotate-y-180 rounded-xl overflow-hidden shadow-xl">
                 <div className="relative w-full h-full bg-white">
-                  <Image
+                  <img
                     src={card.img}
                     alt={card.name}
-                    fill
-                    className="object-cover"
-                    unoptimized
+                    className="w-full h-full object-cover"
                   />
                 </div>
               </div>
