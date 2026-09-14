@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 
+export const dynamic = 'force-dynamic'
+
 const YUGIOH_CARDS = [
   { id: 'blue-eyes', name: 'Blue-Eyes White Dragon', img: 'https://images.ygoprodeck.com/images/cards/89631139.jpg' },
   { id: 'dark-magician', name: 'Dark Magician', img: 'https://images.ygoprodeck.com/images/cards/46986414.jpg' },
